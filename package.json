@@ -21,7 +21,7 @@
   },
   "scripts": {
     "start": "node index.js",
-    "build": "next build && npx playwright install"
+    "build": "npx playwright install"
   },
   "repository": {
     "type": "git",
