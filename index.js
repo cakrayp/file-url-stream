@@ -5,6 +5,7 @@ const $PORT = process.env.PORT || 12500;
 const cookieParser = require("cookie-parser");
 const secure = require("ssl-express-www");
 const cors = require("cors");
+const path = require("path");
 
 // Module express
 app.use(cookieParser());
