@@ -17,7 +17,9 @@ router.get("/instagram/stream/:PATH_TOKEN", async(req, res, next) => {
 
     if (!$TOKEN.match(/[a-zA-Z0-9]/g)) return res.sendStatus(403);
 
-    const $token_toString = Buffer.from($TOKEN, "base64").toString();
+    const $token_decode = Buffer.from($TOKEN, "base64").toString();
+    const $token_toString = Buffer.from($token_decode, "base64").toString();
+    console.log($token_toString)
     const $token_split = $token_toString.split(/::/);
     const $tokenfromChartCode = parseInt(tokenToStringfromChartCode($token_split[1].replace(/\(\)/g,"")));
     const $file_url = $token_split[0];
