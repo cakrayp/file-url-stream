@@ -1,11 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const { default: Axios } = require("axios");
+const fetch = require("node-fetch");
 // const fs = require("fs");
 // const ToMs = require("ms");
 const { fromBuffer } = require("file-type");
 const UserAgent = require("user-agents");
 const { tokenToStringfromChartCode, createStream } = require("../lib/myfunction")
+const URLParsePath = require("../lib/urlParsePath")
 const scrapeninja = require("../lib/scraperNinja");
 
 
@@ -19,10 +21,8 @@ router.get("/instagram/stream/:PATH_TOKEN", async(req, res, next) => {
 
     const $token_decode = Buffer.from($TOKEN, "base64").toString();
     const $token_toString = Buffer.from($token_decode, "base64").toString();
-    console.log($token_toString)
     const $token_split = $token_toString.split(/::/);
     const $tokenfromChartCode = parseInt(tokenToStringfromChartCode($token_split[1].replace(/\(\)/g,"")));
-    const $file_url = $token_split[0];
 
     if (isNaN($tokenfromChartCode) || $token_split[2] !== "instagram") {
         return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
@@ -36,9 +36,10 @@ router.get("/instagram/stream/:PATH_TOKEN", async(req, res, next) => {
 
     const $user_agent_random = new UserAgent(/Safari/)
     const $user_agent = $user_agent_random.data.userAgent;
+    const $file_url = URLParsePath($token_split[0]);
     Axios({
         method: "GET",
-        url: $file_url,
+        url: `https://scontent.cdninstagram.com${$file_url.pathname}?${$file_url.search}`,
         responseType: "stream",
         headers: {
             "Accept": "*/*",
