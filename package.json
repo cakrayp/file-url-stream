@@ -32,5 +32,8 @@
   "bugs": {
     "url": "https://github.com/cakrayp/file-url-stream/issues"
   },
-  "homepage": "https://github.com/cakrayp/file-url-stream#readme"
+  "homepage": "https://github.com/cakrayp/file-url-stream#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.29.1"
+  }
 }
