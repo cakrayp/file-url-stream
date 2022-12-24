@@ -8,10 +8,10 @@ const cors = require("cors");
 
 // Module express
 app.use(cookieParser());
-app.use(express.static("public"))
 app.enable('trust proxy');
 app.use(secure);
 app.use(cors());
+app.use(express.static("public"));
 
 
 // Router
