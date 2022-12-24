@@ -9,22 +9,24 @@ const { tokenToStringfromChartCode, createStream } = require("../lib/myfunction"
 const scrapeninja = require("../lib/scraperNinja");
 
 
-router.get("/instagram/stream", async(req, res) => {
-    const $file_url = req.query.url;
-    const $token_url = req.query.token; //
+router.get("/instagram/stream/:PATH_TOKEN", async(req, res, next) => {
+    const $TOKEN = req.params.PATH_TOKEN;
     
-    if (!$file_url) return res.sendStatus(403);
-    if (!$token_url) return res.sendStatus(406);
+    if ($TOKEN.length > 2000) return next();
+    if ($TOKEN.length < 500) return next();
 
-    const $tokenfromChartCode = tokenToStringfromChartCode($token_url);
-    const $token_toString = Buffer.from($tokenfromChartCode, "base64").toString();
-    const $token_split = $token_toString.split("::");
+    if (!$TOKEN.match(/[a-zA-Z0-9]/g)) return res.sendStatus(403);
 
-    if (isNaN($token_split[0]) || $token_split[1] !== "instagram") {
+    const $token_toString = Buffer.from($TOKEN, "base64").toString();
+    const $token_split = $token_toString.split(/::/);
+    const $tokenfromChartCode = parseInt(tokenToStringfromChartCode($token_split[1].replace(/\(\)/g,"")));
+    const $file_url = $token_split[0];
+
+    if (isNaN($tokenfromChartCode) || $token_split[2] !== "instagram") {
         return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
     }
     
-    const isExpired = Date.now() >= $token_split[0];
+    const isExpired = (Date.now() >= $tokenfromChartCode);
 
     if (isExpired) {
         return res.status(403).setHeader("Content-Type","text/plain").send("URL stream token is expired to open.");   
@@ -47,7 +49,7 @@ router.get("/instagram/stream", async(req, res) => {
     })
     .catch(async(err) => {
         // res.redirect($file_url)
-        res.sendStatus(500)
+        res.status(500).setHeader("Content-Type","text/plain").send("Error encurred! that file may be corrupted.");
     })
 })
 
