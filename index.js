@@ -12,7 +12,7 @@ app.use(cookieParser());
 app.enable('trust proxy');
 app.use(secure);
 app.use(cors());
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "/public")));
 
 
 // Router
