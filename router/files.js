@@ -22,7 +22,7 @@ router.get("/instagram/stream/:PATH_TOKEN", async(req, res, next) => {
     const $token_decode = Buffer.from($TOKEN, "base64").toString();
     const $token_toString = Buffer.from($token_decode, "base64").toString();
     const $token_split = $token_toString.split(/::/);
-    const $tokenfromChartCode = parseInt(tokenToStringfromChartCode($token_split[1].replace(/\(\)/g,"")));
+    const $tokenfromChartCode = parseInt(tokenToStringfromChartCode($token_split[1]?.replace(/\(\)/g,"")));
 
     if (isNaN($tokenfromChartCode) || $token_split[2] !== "instagram") {
         return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
