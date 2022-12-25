@@ -37,21 +37,22 @@ router.get("/instagram/stream/:PATH_TOKEN", async(req, res, next) => {
     const $user_agent_random = new UserAgent(/Safari/)
     const $user_agent = $user_agent_random.data.userAgent;
     const $file_url = URLParsePath($token_split[0]);
-    Axios({
+    fetch(`https://scontent.cdninstagram.com${$file_url.pathname}?${$file_url.search}`, {
         method: "GET",
-        url: `https://scontent.cdninstagram.com${$file_url.pathname}?${$file_url.search}`,
-        responseType: "stream",
         headers: {
             "Accept": "*/*",
             "User-Agent": $user_agent
         }
     })
-    .then(async({ headers, data: $response_stream }) => {
-        res.setHeader("Content-Type", headers['content-type']);
-        $response_stream.pipe(res);
+    .then(async(response) => {
+        const $headers = await response.headers;
+        const $binary = await response.buffer();
+        res.setHeader("Content-Type", $headers.get("content-type"))
+        createStream($binary).pipe(res)
     })
     .catch(async(err) => {
         // res.redirect($file_url)
+        console.log(err)
         res.status(500).setHeader("Content-Type","text/plain").send("Error encurred! that file may be corrupted.");
     })
 })
