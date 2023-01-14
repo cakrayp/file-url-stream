@@ -1,3 +1,4 @@
+// module packages
 const express = require("express");
 const router = express.Router();
 const { default: Axios } = require("axios");
@@ -6,37 +7,56 @@ const fetch = require("node-fetch");
 // const ToMs = require("ms");
 const { fromBuffer } = require("file-type");
 const UserAgent = require("user-agents");
+const moment = require("moment-timezone");
+
+// library packages
 const { tokenToStringfromChartCode, createStream } = require("../lib/myfunction")
-const URLParsePath = require("../lib/urlParsePath")
+const Cryptr = require("../lib/cryptr");
+const URLParsePath = require("../lib/urlParsePath");
 const scrapeninja = require("../lib/scraperNinja");
 
 
-router.get("/instagram/stream/:PATH_TOKEN", async(req, res, next) => {
-    const $TOKEN = req.params.PATH_TOKEN;
-    
+router.get("/instagram/stream", async(req, res, next) => {
+    const $TOKEN = req.query.token;
+    console.log($TOKEN.length)
     if ($TOKEN.length > 2000) return next();
-    if ($TOKEN.length < 500) return next();
+    if ($TOKEN.length < 800) return next();
 
     if (!$TOKEN.match(/[a-zA-Z0-9]/g)) return res.sendStatus(403);
 
-    const $token_decode = Buffer.from($TOKEN, "base64").toString();
-    const $token_toString = Buffer.from($token_decode, "base64").toString();
-    const $token_split = $token_toString.split(/::/);
-    const $tokenfromChartCode = parseInt(tokenToStringfromChartCode($token_split[1]?.replace(/\(\)/g,"")));
+    const $cryptr = new Cryptr("myTotallySecretKey");
+    const $token_toString = $cryptr.decrypt($TOKEN);
 
-    if (isNaN($tokenfromChartCode) || $token_split[2] !== "instagram") {
+    if (!$token_toString) return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
+
+    const $token_split = $token_toString.split(/::/);
+    const $tokenFromNumberExpired = parseInt($token_split[1]);
+    const $Date_Format = new Date($tokenFromNumberExpired);
+
+    if (isNaN($tokenFromNumberExpired) || $token_split[2] !== "instagram") {
         return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
     }
     
-    const isExpired = (Date.now() >= $tokenfromChartCode);
+    const isExpired = (Date.now() >= $tokenFromNumberExpired);
 
     if (isExpired) {
-        return res.status(403).setHeader("Content-Type","text/plain").send("URL stream token is expired to open.");   
+        const expired_note = `
+---------------> TOKEN SIGATURE <---------------\n
+token sigature of URL stream: "${$TOKEN}"\n
+----------------> MESSAGE INFO <----------------\n
+Message: "This token is expired to open."
+Time Expired: "${moment($tokenFromNumberExpired).format('MMMM Do YYYY | hh:mm:ss A')}"\n\n
+`.trim();
+
+        return res.status(403).setHeader("Content-Type","text/plain").send(expired_note);   
     }
 
     const $user_agent_random = new UserAgent(/Safari/)
     const $user_agent = $user_agent_random.data.userAgent;
-    const $file_url = URLParsePath($token_split[0]);
+    const $file_url = URLParsePath($token_split[0]); console.log($file_url);
+    const $pathname_split = $file_url.pathname.split(/\//);
+    const $checkFileFormats = $pathname_split.slice(-1)[0].split(".").slice(-1)[0] === undefined;
+    
     fetch(`https://scontent.cdninstagram.com${$file_url.pathname}?${$file_url.search}`, {
         method: "GET",
         headers: {
@@ -47,12 +67,17 @@ router.get("/instagram/stream/:PATH_TOKEN", async(req, res, next) => {
     .then(async(response) => {
         const $headers = await response.headers;
         const $binary = await response.buffer();
-        res.setHeader("Content-Type", $headers.get("content-type"))
-        createStream($binary).pipe(res)
+        const $last_pathname = $pathname_split[$pathname_split.length -1];  // $pathname_split.slice(-1).toString();
+        const $filenameFromURL = $checkFileFormats ? `${$last_pathname}.${$headers.get("content-type")}` : $last_pathname;
+
+        res.setHeader('Content-length', $headers.get("content-length"));
+        res.setHeader('Content-disposition', `filename=${$filenameFromURL}`);
+        res.setHeader('Content-Type', $headers.get("content-type"));
+        createStream($binary).pipe(res);
     })
     .catch(async(err) => {
-        // res.redirect($file_url)
-        console.log(err)
+        // res.redirect($file_url.href)
+        console.log(err);
         res.status(500).setHeader("Content-Type","text/plain").send("Error encurred! that file may be corrupted.");
     })
 })
