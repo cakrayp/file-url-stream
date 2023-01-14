@@ -41,11 +41,11 @@ router.get("/instagram/stream", async(req, res, next) => {
 
     if (isExpired) {
         const expired_note = `
----------------> TOKEN SIGATURE <---------------\n
+---------------> TOKEN SIGNATURE <---------------\n
 token sigature of URL stream: "${$TOKEN}"\n
-----------------> MESSAGE INFO <----------------\n
+----------------> MESSAGES INFO <----------------\n
 Message: "This token is expired to open."
-Time Expired: "${moment($tokenFromNumberExpired).format('MMMM Do YYYY | hh:mm:ss A')}"\n\n
+Time Expired: "${moment($tokenFromNumberExpired).format('MMMM Do YYYY (dddd)')}"\n\n
 `.trim();
 
         return res.status(403).setHeader("Content-Type","text/plain").send(expired_note);   
@@ -85,7 +85,11 @@ Time Expired: "${moment($tokenFromNumberExpired).format('MMMM Do YYYY | hh:mm:ss
 
 router.get("/iganony/stream", async(req, res) => {
     const $token_url = req.query.token;    // decodeURIComponent(decodeURI(req.query.url))
-    const $URL = Buffer.from($token_url, "base64").toString()
+    const $cryptr = new Cryptr("myTotallySecretKey");
+    const $token_toString = $cryptr.decrypt($token_url);
+
+    if (!$token_toString) return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
+    const $URL = $token_toString;   // Buffer.from($token_url, "base64").toString()
     const $isProtocolURL = $URL.match(/^http(?:s|)/g);
     const $isOnly_iganony = /^http(?:s|):\/\/cdn-ny[0-9].iganony.com/.test($URL);
 
@@ -104,14 +108,17 @@ router.get("/iganony/stream", async(req, res) => {
             "Accept": "*/*",
             "User-Agent": $User_Agent,
         }
-    }).then(async({ data: $response_base64 }) => {
+    }).then(async({ headers, data: $response_base64 }) => {
         const $toBuffer = Buffer.from($response_base64, "base64");
         const { mime } = await fromBuffer($toBuffer);
+        res.setHeader('Content-length', Buffer.byteLength($toBuffer));
+        res.setHeader('Content-disposition', `filename=${headers['content-disposition'].match(/filename=(.+)/)[1]}`);
         res.setHeader("Content-Type", mime);
         createStream($toBuffer).pipe(res);
     }).catch(async(err) => {
         // res.redirect($URL)
-        res.sendStatus(500)
+        console.log(err);
+        res.sendStatus(500);
     })
 })
 
