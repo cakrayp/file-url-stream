@@ -18,22 +18,23 @@ const scrapeninja = require("../lib/scraperNinja");
 
 router.get("/instagram/stream", async(req, res, next) => {
     const $TOKEN = req.query.token;
-    console.log($TOKEN.length)
+    
     if ($TOKEN.length > 2000) return next();
-    if ($TOKEN.length < 800) return next();
+    if ($TOKEN.length < 500) return next();
 
-    if (!$TOKEN.match(/[a-zA-Z0-9]/g)) return res.sendStatus(403);
+    // if (!$TOKEN.match(/[a-zA-Z0-9]/g)) return res.sendStatus(403);
 
-    const $cryptr = new Cryptr("myTotallySecretKey");
-    const $token_toString = $cryptr.decrypt($TOKEN);
+    const $cryptr = new Cryptr("myTotallySecretKey", { saltLength: 5 });
+    const $token_toString = Buffer.from(decodeURIComponent($TOKEN), "base64").toString();  //$cryptr.decrypt($TOKEN);
 
-    if (!$token_toString) return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
+    // if (!$token_toString) return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
 
     const $token_split = $token_toString.split(/::/);
-    const $tokenFromNumberExpired = parseInt($token_split[1]);
-    const $Date_Format = new Date($tokenFromNumberExpired);
+    const $token_decrypt = $cryptr.decrypt($token_split[1]);
+    const $tokenFromNumberExpired = parseInt($token_decrypt);
+    // const $Date_Format = new Date($tokenFromNumberExpired);
 
-    if (isNaN($tokenFromNumberExpired) || $token_split[2] !== "instagram") {
+    if (isNaN($tokenFromNumberExpired)) {
         return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
     }
     
@@ -53,11 +54,12 @@ Time Expired: "${moment($tokenFromNumberExpired).format('MMMM Do YYYY (dddd)')}"
 
     const $user_agent_random = new UserAgent(/Safari/)
     const $user_agent = $user_agent_random.data.userAgent;
-    const $file_url = URLParsePath($token_split[0]); console.log($file_url);
-    const $pathname_split = $file_url.pathname.split(/\//);
+    const $URLParsePath = URLParsePath($token_split[0]); console.log($URLParsePath);
+    const $BASE_MEDIA_URL = $URLParsePath.href;  // `https://scontent.cdninstagram.com${$URLParsePath.pathname}?${$URLParsePath.search}`;
+    const $pathname_split = $URLParsePath.pathname.split(/\//);
     const $checkFileFormats = $pathname_split.slice(-1)[0].split(".").slice(-1)[0] === undefined;
     
-    fetch(`https://scontent.cdninstagram.com${$file_url.pathname}?${$file_url.search}`, {
+    fetch($BASE_MEDIA_URL, {
         method: "GET",
         headers: {
             "Accept": "*/*",
@@ -76,7 +78,7 @@ Time Expired: "${moment($tokenFromNumberExpired).format('MMMM Do YYYY (dddd)')}"
         createStream($binary).pipe(res);
     })
     .catch(async(err) => {
-        // res.redirect($file_url.href)
+        // res.redirect($URLParsePath.href)
         console.log(err);
         res.status(500).setHeader("Content-Type","text/plain").send("Error encurred! that file may be corrupted.");
     })
@@ -85,11 +87,8 @@ Time Expired: "${moment($tokenFromNumberExpired).format('MMMM Do YYYY (dddd)')}"
 
 router.get("/iganony/stream", async(req, res) => {
     const $token_url = req.query.token;    // decodeURIComponent(decodeURI(req.query.url))
-    const $cryptr = new Cryptr("myTotallySecretKey");
-    const $token_toString = $cryptr.decrypt($token_url);
 
-    if (!$token_toString) return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
-    const $URL = $token_toString;   // Buffer.from($token_url, "base64").toString()
+    const $URL = Buffer.from($token_url, "base64").toString()
     const $isProtocolURL = $URL.match(/^http(?:s|)/g);
     const $isOnly_iganony = /^http(?:s|):\/\/cdn-ny[0-9].iganony.com/.test($URL);
 
