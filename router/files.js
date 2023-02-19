@@ -16,9 +16,51 @@ const URLParsePath = require("../lib/urlParsePath");
 const scrapeninja = require("../lib/scraperNinja");
 
 
+router.get("/download", async(req, res) => {
+    const $TOKEN = req.query.token;
+    
+    if (!$TOKEN) return res.sendStatus(400);
+
+    const mediatype_regex = (/^(jp(eg|g)|png|mp(3|4)|webp)$/);
+    const $token_toString = Buffer.from($TOKEN, 'base64').toString();
+    const $json_decode = JSON.parse($token_toString)
+    const $user_agent_random = new UserAgent(/Safari/)
+    const $user_agent = $user_agent_random.data.userAgent;
+    const $URLParsePath = URLParsePath($json_decode.url); console.log($URLParsePath);
+    const $pathname_split = $URLParsePath.pathname.split(/\//);
+
+    Axios({
+        method: "GET",
+        url: $URLParsePath.href,
+        responseType: 'arraybuffer',
+        headers: {
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9,id;q=0.8",
+            "User-Agent": $user_agent
+        }
+    })
+        .then(async({ data: $response_buffer }) => {
+            const { mime, ext } = await fromBuffer($response_buffer);
+
+            if (mediatype_regex.test(ext)) {
+                const $filename = $json_decode.filename ? $json_decode.filename : $pathname_split.slice(-1)[0];
+                res.setHeader("Content-Type", mime);
+                res.setHeader("Content-Disposition", `attachment; filename=${$filename}`);
+                createStream($response_buffer).pipe(res);
+            } else {
+                res.status(301).redirect($URLParsePath.href);
+            }
+
+        })
+        .catch(async(err) => {
+            console.log(err);
+            res.status(500).setHeader("Content-Type","text/plain").send("Error encurred! that file may be corrupted.");
+        })
+})
+
+
 router.get("/instagram/stream", async(req, res, next) => {
     const $TOKEN = req.query.token;
-    console.log($TOKEN.length)
     
     if ($TOKEN.length > 1400) return next();
     if ($TOKEN.length < 300) return next();
