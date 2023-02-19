@@ -19,16 +19,43 @@ const scrapeninja = require("../lib/scraperNinja");
 router.get("/instagram/stream", async(req, res, next) => {
     const $TOKEN = req.query.token;
     
-    if ($TOKEN.length > 1400) return next();
+    if ($TOKEN.length > 2000) return next();
     if ($TOKEN.length < 500) return next();
 
     // if (!$TOKEN.match(/[a-zA-Z0-9]/g)) return res.sendStatus(403);
-    const $token_toString = Buffer.from(decodeURIComponent($TOKEN), "base64").toString();
+
+    const $cryptr = new Cryptr("myTotallySecretKey", { saltLength: 5 });
+    const $token_toString = Buffer.from(decodeURIComponent($TOKEN), "base64").toString();  //$cryptr.decrypt($TOKEN);
+
+    // if (!$token_toString) return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
+
+    const $token_split = $token_toString.split(/::/);
+    const $token_decrypt = $cryptr.decrypt($token_split[1]);
+    const $tokenFromNumberExpired = parseInt($token_decrypt);
+    // const $Date_Format = new Date($tokenFromNumberExpired);
+
+    if (isNaN($tokenFromNumberExpired)) {
+        return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token.");
+    }
     
+    const isExpired = (Date.now() >= $tokenFromNumberExpired);
+
+    if (isExpired) {
+        const expired_note = `
+---------------> TOKEN SIGNATURE <---------------\n
+token sigature of URL stream: "${$TOKEN}"\n
+----------------> MESSAGES INFO <----------------\n
+Message: "This token is expired to open."
+Time Expired: "${moment($tokenFromNumberExpired).format('MMMM Do YYYY (dddd)')}"\n\n
+`.trim();
+
+        return res.status(403).setHeader("Content-Type","text/plain").send(expired_note);   
+    }
+
     const $user_agent_random = new UserAgent(/Safari/)
     const $user_agent = $user_agent_random.data.userAgent;
-    const $URLParsePath = URLParsePath($token_toString); console.log($URLParsePath);
-    const $BASE_MEDIA_URL = `https://scontent.cdninstagram.com${$URLParsePath.pathname}?${$URLParsePath.search}`;
+    const $URLParsePath = URLParsePath($token_split[0]); console.log($URLParsePath);
+    const $BASE_MEDIA_URL = $URLParsePath.href;  // `https://scontent.cdninstagram.com${$URLParsePath.pathname}?${$URLParsePath.search}`;
     const $pathname_split = $URLParsePath.pathname.split(/\//);
     const $checkFileFormats = $pathname_split.slice(-1)[0].split(".").slice(-1)[0] === undefined;
     
@@ -36,20 +63,19 @@ router.get("/instagram/stream", async(req, res, next) => {
         method: "GET",
         headers: {
             "Accept": "*/*",
-            "Accept-Language": "en-US,en;q=0.9,id;q=0.8",
             "User-Agent": $user_agent
         }
     })
     .then(async(response) => {
         const $headers = await response.headers;
-        const $binary_buff = await response.buffer();
+        const $binary = await response.buffer();
         const $last_pathname = $pathname_split[$pathname_split.length -1];  // $pathname_split.slice(-1).toString();
         const $filenameFromURL = $checkFileFormats ? `${$last_pathname}.${$headers.get("content-type")}` : $last_pathname;
 
         res.setHeader('Content-length', $headers.get("content-length"));
         res.setHeader('Content-disposition', `filename=${$filenameFromURL}`);
         res.setHeader('Content-Type', $headers.get("content-type"));
-        createStream($binary_buff).pipe(res);
+        createStream($binary).pipe(res);
     })
     .catch(async(err) => {
         // res.redirect($URLParsePath.href)
