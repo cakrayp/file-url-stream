@@ -18,9 +18,10 @@ const scrapeninja = require("../lib/scraperNinja");
 
 router.get("/instagram/stream", async(req, res, next) => {
     const $TOKEN = req.query.token;
+    console.log($TOKEN.length)
     
     if ($TOKEN.length > 1400) return next();
-    if ($TOKEN.length < 500) return next();
+    if ($TOKEN.length < 300) return next();
 
     // if (!$TOKEN.match(/[a-zA-Z0-9]/g)) return res.sendStatus(403);
     const $token_toString = Buffer.from(decodeURIComponent($TOKEN), "base64").toString();
