@@ -8,6 +8,7 @@ const fetch = require("node-fetch");
 const { fromBuffer } = require("file-type");
 const UserAgent = require("user-agents");
 const moment = require("moment-timezone");
+const jwt = require("jsonwebtoken");
 
 // library packages
 const { tokenToStringfromChartCode, createStream } = require("../lib/myfunction")
@@ -15,16 +16,36 @@ const Cryptr = require("../lib/cryptr");
 const URLParsePath = require("../lib/urlParsePath");
 const scrapeninja = require("../lib/scraperNinja");
 
+// Json Web Token
+const ACTIVATION_TOKEN = "3yl-qBj!Dgl7Kx5E9=!ZYt9eKf8R6clU&!x529#+@hKL1vYEJnUaaS0HM00eNVtZtW/Bd";
+const VerifyToken = function(token) {
+    return jwt.verify(token, ACTIVATION_TOKEN, function(error, data) {
+        if (error) {
+            const expired_date = new Date(error.expiredAt);
+            const isExpired = Date.now() >= expired_date.valueOf();
+            return { isExpired, isValid: !isExpired }
+        } else {
+            return data;
+        }
+    })
+}
 
+
+// Route Action Back end
 router.get("/download", async(req, res) => {
     const $TOKEN = req.query.token;
-    
+
     if (!$TOKEN) return res.sendStatus(400);
+    
+    const jsonwebtoken = VerifyToken(Buffer.from($TOKEN, 'base64').toString());
+
+    if (jsonwebtoken.isValid) return res.setHeader("Content-Type","text/plain").send("Invalid token");
+    if (jsonwebtoken.isExpired) return res.setHeader("Content-Type","text/plain").send("signature expired");
 
     const mediatype_regex = (/^(jp(eg|g)|png|mp(3|4)|webp)$/);
-    const $token_toString = Buffer.from($TOKEN, 'base64').toString();
-    const $json_decode = JSON.parse($token_toString)
-    const $user_agent_random = new UserAgent(/Safari/)
+    const $token_toString = JSON.stringify(jsonwebtoken);  // Buffer.from($TOKEN, 'base64').toString();
+    const $json_decode = JSON.parse($token_toString);
+    const $user_agent_random = new UserAgent(/Safari/);
     const $user_agent = $user_agent_random.data.userAgent;
     const $URLParsePath = URLParsePath($json_decode.url); console.log($URLParsePath);
     const $pathname_split = $URLParsePath.pathname.split(/\//);
@@ -62,9 +83,13 @@ router.get("/download", async(req, res) => {
 router.get("/instagram/stream", async(req, res, next) => {
     const $TOKEN = req.query.token;
     
-    if ($TOKEN.length > 1400) return next();
-    if ($TOKEN.length < 300) return next();
+    if (!$TOKEN) return res.sendStatus(400);
 
+    const jsonwebtoken = VerifyToken(Buffer.from($TOKEN, 'base64').toString());
+
+    if (jsonwebtoken.isValid) return res.setHeader("Content-Type","text/plain").send("Invalid token");
+    if (jsonwebtoken.isExpired) return res.setHeader("Content-Type","text/plain").send("signature expired");
+    
     // if (!$TOKEN.match(/[a-zA-Z0-9]/g)) return res.sendStatus(403);
     const $token_toString = Buffer.from(decodeURIComponent($TOKEN), "base64").toString();
     
@@ -99,6 +124,45 @@ router.get("/instagram/stream", async(req, res, next) => {
         console.log(err);
         res.status(500).setHeader("Content-Type","text/plain").send("Error encurred! that file may be corrupted.");
     })
+})
+
+
+router.get("/tiktok/stream", async(req, res) => {
+    const $TOKEN = req.query.token;
+
+    if (!$TOKEN) return res.sendStatus(400);
+
+    const jsonwebtoken = VerifyToken(Buffer.from($TOKEN, 'base64').toString());
+    const tiktok_api_regex = /.(tiktok|tiktokcdn).com/g.test(jsonwebtoken?.url);
+    console.log(tiktok_api_regex)
+
+    if (jsonwebtoken.isValid) return res.setHeader("Content-Type","text/plain").send("Invalid token");
+    if (jsonwebtoken.isExpired) return res.setHeader("Content-Type","text/plain").send("signature expired");
+    if (!tiktok_api_regex) return res.setHeader("Content-Type","text/plain").send(`Access denied for "${jsonwebtoken.url}"`)
+    
+    // if (!$TOKEN.match(/[a-zA-Z0-9]/g)) return res.sendStatus(403);
+    const $token_toString = jsonwebtoken.url;
+    
+    const $user_agent_random = new UserAgent(/Safari/);
+    const $user_agent = $user_agent_random.data.userAgent;
+    const $URLParsePath = URLParsePath($token_toString); console.log($URLParsePath);
+
+    Axios({
+        method: "GET",
+        url: $URLParsePath.href,
+        responseType: "arraybuffer",
+        headers: {
+            "Accept": "*/*",
+            "Referer": "https://www.tiktok.com/",
+            "User-Agent": $user_agent
+        }
+    })
+        .then(async({ data: $binary_buff }) => {
+            const { mime } = await fromBuffer($binary_buff);
+            
+            res.setHeader('Content-Type', mime);
+            createStream($binary_buff).pipe(res);
+        })
 })
 
 
