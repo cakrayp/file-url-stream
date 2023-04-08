@@ -21,6 +21,7 @@ const ACTIVATION_TOKEN = "3yl-qBj!Dgl7Kx5E9=!ZYt9eKf8R6clU&!x529#+@hKL1vYEJnUaaS
 const VerifyToken = function(token) {
     return jwt.verify(token, ACTIVATION_TOKEN, function(error, data) {
         if (error) {
+            console.log(error);
             const expired_date = new Date(error.expiredAt);
             const isExpired = Date.now() >= expired_date.valueOf();
             return { isExpired, isValid: !isExpired }
@@ -134,11 +135,10 @@ router.get("/tiktok/stream", async(req, res) => {
 
     const jsonwebtoken = VerifyToken(Buffer.from($TOKEN, 'base64').toString());
     const tiktok_api_regex = /.(tiktok|tiktokcdn).com/g.test(jsonwebtoken?.url);
-    console.log(tiktok_api_regex)
 
-    if (jsonwebtoken.isValid) return res.setHeader("Content-Type","text/plain").send("Invalid token");
-    if (jsonwebtoken.isExpired) return res.setHeader("Content-Type","text/plain").send("signature expired");
-    if (!tiktok_api_regex) return res.setHeader("Content-Type","text/plain").send(`Access denied for "${jsonwebtoken.url}"`)
+    if (jsonwebtoken.isValid) return res.setHeader("Content-Type","text/plain").status(403).send("Invalid token");
+    if (jsonwebtoken.isExpired) return res.setHeader("Content-Type","text/plain").status(403).send("signature expired");
+    if (!tiktok_api_regex) return res.setHeader("Content-Type","text/plain").status(403).send(`Access denied for "${jsonwebtoken.url}"`)
     
     // if (!$TOKEN.match(/[a-zA-Z0-9]/g)) return res.sendStatus(403);
     const $token_toString = jsonwebtoken.url;
