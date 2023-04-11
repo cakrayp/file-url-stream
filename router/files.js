@@ -3,9 +3,11 @@ const express = require("express");
 const router = express.Router();
 const { default: Axios } = require("axios");
 const fetch = require("node-fetch");
+const cheerio = require("cheerio");
 // const fs = require("fs");
 // const ToMs = require("ms");
 const { fromBuffer } = require("file-type");
+const request = require("request");
 const UserAgent = require("user-agents");
 const moment = require("moment-timezone");
 const jwt = require("jsonwebtoken");
@@ -175,8 +177,8 @@ router.get("/iganony/stream", async(req, res) => {
 
     if(!$token_url) return res.sendStatus(403);
     if(!/[a-zA-Z0-9]/g.test($token_url)) return res.status(403).setHeader("Content-Type","text/plain").send("Invalid token");
-    if(!$isProtocolURL) return res.setHeader("Content-Type","text/plain").send("Invalid token");
-    if(!$isOnly_iganony) return res.setHeader("Content-Type","text/plain").send("Invalid token");
+    if(!$isProtocolURL) return res.status(400).setHeader("Content-Type","text/plain").send("Invalid token");
+    if(!$isOnly_iganony) return res.status(400).setHeader("Content-Type","text/plain").send("Invalid token");
 
     const $UserAgents = new UserAgent(/Safari/);
     const $User_Agent = $UserAgents.data.userAgent;
@@ -202,5 +204,24 @@ router.get("/iganony/stream", async(req, res) => {
     })
 })
 
+
+router.get("/wallpaper_hd", async(req, res) => {
+    const wallURL = req.query.url;
+    const isWallpaper_dl = /https:\/\/www.wallpaperflare.com\/(.+)\/download/.test(wallURL);
+
+    if (!wallURL) return res.status(400).setHeader("Content-Type","text/plain").send("Bad request, URL is require for get a wallpaper HD quality")
+    if (!isWallpaper_dl) return res.status(400).setHeader("Content-Type","text/plain").send("Bad request, URL is only forget a wallpaper HD quality of https://www.wallpaperflare.com/.../download");
+
+    Axios.get(wallURL)
+        .then(async({ data: response_html }) => {
+            const $ = cheerio.load(response_html);
+            const image_hd_url = $("#show_img").attr("src");
+            request.get(image_hd_url).pipe(res);
+        })
+        .catch(async(err) => {
+            console.log(err)
+            res.status(500).setHeader("Content-Type","text/plain").send(`Error enccurred, the server is not working for ${wallURL}`)
+        })
+})
 
 module.exports = router;
