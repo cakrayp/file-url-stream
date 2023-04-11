@@ -212,7 +212,15 @@ router.get("/wallpaper_hd", async(req, res) => {
     if (!wallURL) return res.status(400).setHeader("Content-Type","text/plain").send("Bad request, URL is require for get a wallpaper HD quality")
     if (!isWallpaper_dl) return res.status(400).setHeader("Content-Type","text/plain").send("Bad request, URL is only forget a wallpaper HD quality of https://www.wallpaperflare.com/.../download");
 
-    Axios.get(wallURL)
+    Axios.request({
+        method: "GET",
+        url: wallURL,
+        headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
+            "if-modified-since": "Thu, 27 Jun 2019 18:02:30 GMT",
+            "if-none-match": "5d1504b6-132ec6"
+        }
+    })
         .then(async({ data: response_html }) => {
             const $ = cheerio.load(response_html);
             const image_hd_url = $("#show_img").attr("src");
