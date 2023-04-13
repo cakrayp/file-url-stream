@@ -217,11 +217,7 @@ router.get("/wallpaper_hd", async(req, res) => {
         "cookie": "_ga=GA1.2.863074474.1624987429; _gid=GA1.2.857771494.1624987429; __gads=ID=84d12a6ae82d0a63-2242b0820eca0058:T=1624987427:RT=1624987427:S=ALNI_MaJYaH0-_xRbokdDkQ0B49vSYgYcQ"
     }
 
-    Axios.request({
-        method: "GET",
-        url: wallURL,
-        headers
-    })
+    Axios.get(wallURL, { headers })
         .then(async({ data: response_html }) => {
             const $ = cheerio.load(response_html);
             const image_hd_url = $("#show_img").attr("src");
