@@ -2,7 +2,6 @@
 const express = require("express");
 const router = express.Router();
 const { default: Axios } = require("axios");
-const Humanoid = require("humanoid-js");
 const fetch = require("node-fetch");
 const cheerio = require("cheerio");
 // const fs = require("fs");
