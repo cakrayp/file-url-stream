@@ -225,7 +225,8 @@ router.get("/wallpaper_hd", async(req, res) => {
         .then(async({ data: response_html }) => {
             const $ = cheerio.load(response_html);
             const image_hd_url = $("#show_img").attr("src");
-            request.get(image_hd_url, { headers }).pipe(res);
+            // request.get(image_hd_url, { headers }).pipe(res);
+            res.send(image_hd_url)
         })
         .catch(async(err) => {
             console.log(err)
