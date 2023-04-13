@@ -2,6 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { default: Axios } = require("axios");
+const Humanoid = require("humanoid-js");
 const fetch = require("node-fetch");
 const cheerio = require("cheerio");
 // const fs = require("fs");
@@ -212,19 +213,20 @@ router.get("/wallpaper_hd", async(req, res) => {
     if (!wallURL) return res.status(400).setHeader("Content-Type","text/plain").send("Bad request, URL is require for get a wallpaper HD quality")
     if (!isWallpaper_dl) return res.status(400).setHeader("Content-Type","text/plain").send("Bad request, URL is only forget a wallpaper HD quality of https://www.wallpaperflare.com/.../download");
 
+    const headers = {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "cookie": "_ga=GA1.2.863074474.1624987429; _gid=GA1.2.857771494.1624987429; __gads=ID=84d12a6ae82d0a63-2242b0820eca0058:T=1624987427:RT=1624987427:S=ALNI_MaJYaH0-_xRbokdDkQ0B49vSYgYcQ"
+    }
+
     Axios.request({
         method: "GET",
         url: wallURL,
-        headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
-            "if-modified-since": "Thu, 27 Jun 2019 18:02:30 GMT",
-            "if-none-match": "5d1504b6-132ec6"
-        }
+        headers
     })
         .then(async({ data: response_html }) => {
             const $ = cheerio.load(response_html);
             const image_hd_url = $("#show_img").attr("src");
-            request.get(image_hd_url).pipe(res);
+            request.get(image_hd_url, { headers }).pipe(res);
         })
         .catch(async(err) => {
             console.log(err)
