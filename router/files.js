@@ -2,6 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const { default: Axios } = require("axios");
+const HttpProxyAgent = require("http-proxy-agent");
 const fetch = require("node-fetch");
 const cheerio = require("cheerio");
 // const fs = require("fs");
@@ -13,7 +14,7 @@ const moment = require("moment-timezone");
 const jwt = require("jsonwebtoken");
 
 // library packages
-const { tokenToStringfromChartCode, createStream } = require("../lib/myfunction")
+const { tokenToStringfromChartCode, createStream, randomArr } = require("../lib/myfunction")
 const Cryptr = require("../lib/cryptr");
 const URLParsePath = require("../lib/urlParsePath");
 const scrapeninja = require("../lib/scraperNinja");
@@ -212,17 +213,42 @@ router.get("/wallpaper_hd", async(req, res) => {
     if (!wallURL) return res.status(400).setHeader("Content-Type","text/plain").send("Bad request, URL is require for get a wallpaper HD quality")
     if (!isWallpaper_dl) return res.status(400).setHeader("Content-Type","text/plain").send("Bad request, URL is only forget a wallpaper HD quality of https://www.wallpaperflare.com/.../download");
 
+    const user_agent = new UserAgent(/Safari/);
     const headers = {
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "user-agent": user_agent.random().toString(),// "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
         "cookie": "_ga=GA1.2.863074474.1624987429; _gid=GA1.2.857771494.1624987429; __gads=ID=84d12a6ae82d0a63-2242b0820eca0058:T=1624987427:RT=1624987427:S=ALNI_MaJYaH0-_xRbokdDkQ0B49vSYgYcQ"
     }
+    const proxyURL = randomArr([
+        "http://5.78.88.155:8080",
+        "http://23.88.47.183:8080",
+        "http://64.225.107.74:8080",
+        "http://102.165.51.172:3128/",
+        "http://65.108.230.238:45979",
 
-    Axios.get(wallURL, { headers })
+        "http://167.71.205.47:8080",
+        "http://174.138.184.82:41691",
+        "http://174.138.184.82:41183",
+        "http://128.140.6.139:8080",
+        "http://65.108.230.238:40985",
+
+        "http://65.108.230.239:38859",
+        "http://167.71.205.47:8080",
+        "http://95.217.186.208:8080",
+        "http://102.165.51.172:3128",
+        "http://5.78.92.65:8080"
+        
+    ]);
+    const httpAgent = new HttpProxyAgent(proxyURL);
+
+    Axios.get(wallURL, { httpAgent, headers })
         .then(async({ data: response_html }) => {
             const $ = cheerio.load(response_html);
             const image_hd_url = $("#show_img").attr("src");
-            // request.get(image_hd_url, { headers }).pipe(res);
-            res.send(image_hd_url)
+            const { data: file_buffer } = await Axios.get(image_hd_url, { httpAgent, headers, responseType: "arraybuffer" });
+            const { mime } = await fromBuffer(file_buffer);
+            res.setHeader("Content-Type", mime);
+            createStream(file_buffer).pipe(res)
+            // res.send(image_hd_url)
         })
         .catch(async(err) => {
             console.log(err)
